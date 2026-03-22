@@ -1,0 +1,10 @@
+{
+  "model": "stable_diffusion_img2img",
+  "n_generated": 19,
+  "fid_domain_adapted": 119.01939138739242,
+  "tstr_accuracy": 0.0,
+  "mean_pneumonia_score": 0.0010548837017267942,
+  "strength": 0.7,
+  "seed": 42,
+  "note": "FID comparison exploratory \u2014 different input distribution"
+}
