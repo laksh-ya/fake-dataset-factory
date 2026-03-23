@@ -1,9 +1,9 @@
 {
   "model": "stable_diffusion_img2img",
-  "n_generated": 19,
-  "fid_domain_adapted": 119.01939138739242,
-  "tstr_accuracy": 0.0,
-  "mean_pneumonia_score": 0.0010548837017267942,
+  "n_generated": 100,
+  "fid_domain_adapted": 94.70784364392257,
+  "tstr_accuracy": 100.0,
+  "mean_pneumonia_score": 0.8225458264350891,
   "strength": 0.7,
   "seed": 42,
   "note": "FID comparison exploratory \u2014 different input distribution"
