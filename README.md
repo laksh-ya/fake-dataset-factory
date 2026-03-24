@@ -75,16 +75,20 @@ Each model trained on the same dataset. Same evaluation. Apples to apples (excep
 
 ## Results
 
-| Model | Year | FID ↓ | TSTR (Lung Opacity) ↑ | Status |
+| Model | Year | FID ↓ | TSTR (Lung Opacity) ↑ | Notes |
 |---|---|---|---|---|
-| DCGAN | 2014 | **15.24** | 100% | ✅ |
-| Stable Diffusion (img2img) | 2022 | 94.71* | 100% | ✅ |
-| WGAN-GP | 2017 | — | — | ⏳ |
-| VQ-VAE | 2017 | — | — | ⏳ |
-| DDPM | 2020 | — | — | ⏳ |
-| Flow Matching | 2022 | — | — | ⏳ |
+| **WGAN-GP** | 2017 | **11.10** | 100% | 🥇 Best overall |
+| DCGAN | 2014 | 15.24 | 100% | 🥈 Strong baseline |
+| Flow Matching | 2022 | 40.35 | 100% | OT-CFM, 50 epochs |
+| VQ-VAE | 2017 | 46.59 | 100% | No PixelCNN prior* |
+| Stable Diffusion | 2022 | 94.71 | 100% | img2img mode** |
+| DDPM | 2020 | 165.33 | 100% | Underfit (50 epochs)*** |
 
-*SD FID exploratory — img2img uses real images as input, not pure noise. Different distribution by design.
+\* VQ-VAE uses random codebook sampling — proper generation requires PixelCNN prior on learned indices.
+
+\*\* SD img2img uses real images as input, not pure noise. High FID reflects different input distribution by design.
+
+\*\*\* DDPM needs 100-200 epochs to converge. 50 epochs shows underfitting — included for honest comparison.
 
 ---
 

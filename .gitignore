@@ -2,3 +2,4 @@ venv/
 kaggle raw outputs/dcgan.zip
 .DS_Store
 /kaggle raw outputs
+/notebooks/outputs
