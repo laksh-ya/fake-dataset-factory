@@ -3,3 +3,4 @@ kaggle raw outputs/dcgan.zip
 .DS_Store
 /kaggle raw outputs
 /notebooks/outputs/05_ddpm/checkpoints
+CLAUDE.md

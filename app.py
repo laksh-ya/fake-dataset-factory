@@ -14,6 +14,7 @@ import gradio as gr
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from PIL import Image
 from scipy import linalg
 
@@ -25,10 +26,16 @@ except ImportError:
     XRV_AVAILABLE = False
 
 try:
-    from diffusers import StableDiffusionImg2ImgPipeline
+    from diffusers import StableDiffusionImg2ImgPipeline, UNet2DModel, DDPMScheduler
     DIFFUSERS_AVAILABLE = True
 except ImportError:
     DIFFUSERS_AVAILABLE = False
+
+try:
+    from torchdiffeq import odeint
+    TORCHDIFFEQ_AVAILABLE = True
+except ImportError:
+    TORCHDIFFEQ_AVAILABLE = False
 
 
 SEED = 42
@@ -100,6 +107,173 @@ class WGANGPGenerator(nn.Module):
 
     def forward(self, x):
         return self.main(x)
+
+
+# =============================================================================
+# VQ-VAE Model Definition
+# =============================================================================
+
+class VectorQuantizer(nn.Module):
+    """Quantizes continuous latents to discrete codebook vectors."""
+    def __init__(self, num_embeddings, embed_dim, beta=0.25):
+        super().__init__()
+        self.num_embeddings = num_embeddings
+        self.embed_dim = embed_dim
+        self.beta = beta
+        self.embedding = nn.Embedding(num_embeddings, embed_dim)
+        self.embedding.weight.data.uniform_(-1/num_embeddings, 1/num_embeddings)
+
+    def forward(self, z):
+        z = z.permute(0, 2, 3, 1).contiguous()
+        z_flat = z.view(-1, self.embed_dim)
+        d = (z_flat ** 2).sum(dim=1, keepdim=True) + \
+            (self.embedding.weight ** 2).sum(dim=1) - \
+            2 * z_flat @ self.embedding.weight.t()
+        indices = d.argmin(dim=1)
+        z_q = self.embedding(indices).view(z.shape)
+        codebook_loss = F.mse_loss(z_q, z.detach())
+        commitment_loss = F.mse_loss(z_q.detach(), z)
+        z_q = z + (z_q - z).detach()
+        z_q = z_q.permute(0, 3, 1, 2).contiguous()
+        return z_q, codebook_loss, commitment_loss, indices
+
+
+class VQVAEEncoder(nn.Module):
+    def __init__(self, in_channels, hidden_dim, embed_dim):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Conv2d(in_channels, hidden_dim // 2, 4, 2, 1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(hidden_dim // 2, hidden_dim, 4, 2, 1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(hidden_dim, hidden_dim, 3, 1, 1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(hidden_dim, embed_dim, 1, 1, 0)
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+
+class VQVAEDecoder(nn.Module):
+    def __init__(self, embed_dim, hidden_dim, out_channels):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Conv2d(embed_dim, hidden_dim, 3, 1, 1),
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(hidden_dim, hidden_dim // 2, 4, 2, 1),
+            nn.ReLU(inplace=True),
+            nn.ConvTranspose2d(hidden_dim // 2, out_channels, 4, 2, 1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+
+class VQVAE(nn.Module):
+    def __init__(self, in_channels=1, hidden_dim=128, embed_dim=64, num_embeddings=512, beta=0.25):
+        super().__init__()
+        self.encoder = VQVAEEncoder(in_channels, hidden_dim, embed_dim)
+        self.vq = VectorQuantizer(num_embeddings, embed_dim, beta)
+        self.decoder = VQVAEDecoder(embed_dim, hidden_dim, in_channels)
+
+    def forward(self, x):
+        z = self.encoder(x)
+        z_q, codebook_loss, commitment_loss, indices = self.vq(z)
+        x_recon = self.decoder(z_q)
+        return x_recon, codebook_loss, commitment_loss, indices
+
+    def decode(self, z_q):
+        return self.decoder(z_q)
+
+
+# =============================================================================
+# Flow Matching Model Definition
+# =============================================================================
+
+class SinusoidalPosEmb(nn.Module):
+    def __init__(self, dim):
+        super().__init__()
+        self.dim = dim
+
+    def forward(self, t):
+        half_dim = self.dim // 2
+        emb = np.log(10000) / (half_dim - 1)
+        emb = torch.exp(torch.arange(half_dim, device=t.device) * -emb)
+        emb = t[:, None] * emb[None, :]
+        emb = torch.cat((emb.sin(), emb.cos()), dim=-1)
+        return emb
+
+
+class ResBlock(nn.Module):
+    def __init__(self, in_ch, out_ch, time_emb_dim):
+        super().__init__()
+        self.time_mlp = nn.Linear(time_emb_dim, out_ch)
+        self.block1 = nn.Sequential(
+            nn.GroupNorm(min(8, in_ch), in_ch),
+            nn.SiLU(),
+            nn.Conv2d(in_ch, out_ch, 3, padding=1)
+        )
+        self.block2 = nn.Sequential(
+            nn.GroupNorm(min(8, out_ch), out_ch),
+            nn.SiLU(),
+            nn.Conv2d(out_ch, out_ch, 3, padding=1)
+        )
+        self.residual_conv = nn.Conv2d(in_ch, out_ch, 1) if in_ch != out_ch else nn.Identity()
+
+    def forward(self, x, t_emb):
+        h = self.block1(x)
+        h = h + self.time_mlp(t_emb)[:, :, None, None]
+        h = self.block2(h)
+        return h + self.residual_conv(x)
+
+
+class FlowMatchingUNet(nn.Module):
+    def __init__(self, in_ch=1, base_ch=64, time_emb_dim=128):
+        super().__init__()
+        self.time_mlp = nn.Sequential(
+            SinusoidalPosEmb(time_emb_dim),
+            nn.Linear(time_emb_dim, time_emb_dim),
+            nn.SiLU(),
+            nn.Linear(time_emb_dim, time_emb_dim)
+        )
+        self.enc1 = ResBlock(in_ch, base_ch, time_emb_dim)
+        self.enc2 = ResBlock(base_ch, base_ch * 2, time_emb_dim)
+        self.enc3 = ResBlock(base_ch * 2, base_ch * 4, time_emb_dim)
+        self.down1 = nn.Conv2d(base_ch, base_ch, 4, 2, 1)
+        self.down2 = nn.Conv2d(base_ch * 2, base_ch * 2, 4, 2, 1)
+        self.down3 = nn.Conv2d(base_ch * 4, base_ch * 4, 4, 2, 1)
+        self.mid = ResBlock(base_ch * 4, base_ch * 4, time_emb_dim)
+        self.up3 = nn.ConvTranspose2d(base_ch * 4, base_ch * 4, 4, 2, 1)
+        self.dec3 = ResBlock(base_ch * 8, base_ch * 2, time_emb_dim)
+        self.up2 = nn.ConvTranspose2d(base_ch * 2, base_ch * 2, 4, 2, 1)
+        self.dec2 = ResBlock(base_ch * 4, base_ch, time_emb_dim)
+        self.up1 = nn.ConvTranspose2d(base_ch, base_ch, 4, 2, 1)
+        self.dec1 = ResBlock(base_ch * 2, base_ch, time_emb_dim)
+        self.out = nn.Conv2d(base_ch, in_ch, 1)
+
+    def forward(self, x, t):
+        t_emb = self.time_mlp(t)
+        e1 = self.enc1(x, t_emb)
+        e2 = self.enc2(self.down1(e1), t_emb)
+        e3 = self.enc3(self.down2(e2), t_emb)
+        m = self.mid(self.down3(e3), t_emb)
+        d3 = self.dec3(torch.cat([self.up3(m), e3], dim=1), t_emb)
+        d2 = self.dec2(torch.cat([self.up2(d3), e2], dim=1), t_emb)
+        d1 = self.dec1(torch.cat([self.up1(d2), e1], dim=1), t_emb)
+        return self.out(d1)
+
+
+class ODEFunc(nn.Module):
+    """Wrapper for ODE solver."""
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+
+    def forward(self, t, x):
+        t_batch = t.expand(x.shape[0])
+        return self.model(x, t_batch)
 
 
 # =============================================================================
@@ -197,7 +371,45 @@ def load_model(model_id: str):
         loaded_models[model_id] = model
         return model
 
-    # TODO: add VQ-VAE, DDPM, Flow Matching loaders when notebooks are ready
+    elif model_type == "vqvae":
+        model = VQVAE(in_channels=1, hidden_dim=128, embed_dim=64, num_embeddings=512, beta=0.25)
+        checkpoint = torch.load(config["checkpoint"], map_location=device)
+        model.load_state_dict(checkpoint["model_state_dict"])
+        model.to(device)
+        model.eval()
+        loaded_models[model_id] = model
+        return model
+
+    elif model_type == "ddpm":
+        if not DIFFUSERS_AVAILABLE:
+            return None
+        model = UNet2DModel(
+            sample_size=IMG_SIZE,
+            in_channels=1,
+            out_channels=1,
+            layers_per_block=2,
+            block_out_channels=(64, 128, 256, 256),
+            down_block_types=("DownBlock2D", "DownBlock2D", "AttnDownBlock2D", "DownBlock2D"),
+            up_block_types=("UpBlock2D", "AttnUpBlock2D", "UpBlock2D", "UpBlock2D"),
+        )
+        checkpoint = torch.load(config["checkpoint"], map_location=device)
+        model.load_state_dict(checkpoint["model_state_dict"])
+        model.to(device)
+        model.eval()
+        scheduler = DDPMScheduler(num_train_timesteps=1000)
+        loaded_models[model_id] = {"model": model, "scheduler": scheduler}
+        return loaded_models[model_id]
+
+    elif model_type == "flow_matching":
+        if not TORCHDIFFEQ_AVAILABLE:
+            return None
+        model = FlowMatchingUNet(in_ch=1, base_ch=64, time_emb_dim=128)
+        checkpoint = torch.load(config["checkpoint"], map_location=device)
+        model.load_state_dict(checkpoint["model_state_dict"])
+        model.to(device)
+        model.eval()
+        loaded_models[model_id] = model
+        return model
 
     return None
 
@@ -329,6 +541,67 @@ def generate_sd_images(n_samples: int, target_class: str) -> list:
     return images
 
 
+def generate_vqvae_images(model, n_samples: int) -> list:
+    """Generate images from VQ-VAE using random codebook sampling."""
+    images = []
+    latent_h, latent_w = 16, 16  # 64/4
+    embed_dim = 64
+    num_embeddings = 512
+
+    with torch.no_grad():
+        for i in range(n_samples):
+            indices = torch.randint(0, num_embeddings, (latent_h * latent_w,), device=device)
+            z_q = model.vq.embedding(indices)
+            z_q = z_q.view(1, latent_h, latent_w, embed_dim)
+            z_q = z_q.permute(0, 3, 1, 2).contiguous()
+            fake = model.decode(z_q)
+            arr = fake.squeeze().cpu().numpy()
+            arr = (arr * 255).astype(np.uint8)
+            images.append(Image.fromarray(arr, mode='L'))
+    return images
+
+
+def generate_ddpm_images(model_dict, n_samples: int) -> list:
+    """Generate images from DDPM."""
+    model = model_dict["model"]
+    scheduler = model_dict["scheduler"]
+    images = []
+
+    with torch.no_grad():
+        for i in range(n_samples):
+            torch.manual_seed(SEED + i)
+            sample = torch.randn(1, 1, IMG_SIZE, IMG_SIZE, device=device)
+
+            for t in scheduler.timesteps:
+                model_output = model(sample, t).sample
+                sample = scheduler.step(model_output, t, sample).prev_sample
+
+            arr = sample.squeeze().cpu().numpy()
+            arr = ((arr + 1) / 2 * 255).clip(0, 255).astype(np.uint8)
+            images.append(Image.fromarray(arr, mode='L'))
+    return images
+
+
+def generate_flow_matching_images(model, n_samples: int) -> list:
+    """Generate images from Flow Matching using ODE integration."""
+    if not TORCHDIFFEQ_AVAILABLE:
+        return []
+
+    images = []
+    ode_func = ODEFunc(model)
+
+    with torch.no_grad():
+        for i in range(n_samples):
+            torch.manual_seed(SEED + i)
+            x0 = torch.randn(1, 1, IMG_SIZE, IMG_SIZE, device=device)
+            t_span = torch.tensor([0.0, 1.0], device=device)
+            x1 = odeint(ode_func, x0, t_span, method='euler', options={'step_size': 0.1})[-1]
+            arr = x1.squeeze().cpu().numpy()
+            arr = ((arr + 1) / 2 * 255).clip(0, 255).astype(np.uint8)
+            images.append(Image.fromarray(arr, mode='L'))
+    return images
+
+
 def generate_images(model_id: str, target_class: str, n_samples: int):
     """Main generation function. Returns (images, fid, tstr, zip_path)."""
     model = load_model(model_id)
@@ -342,6 +615,12 @@ def generate_images(model_id: str, target_class: str, n_samples: int):
         images = generate_sd_images(n_samples, target_class)
     elif config["type"] in ["dcgan", "wgan_gp"]:
         images = generate_gan_images(model, n_samples)
+    elif config["type"] == "vqvae":
+        images = generate_vqvae_images(model, n_samples)
+    elif config["type"] == "ddpm":
+        images = generate_ddpm_images(model, n_samples)
+    elif config["type"] == "flow_matching":
+        images = generate_flow_matching_images(model, n_samples)
     else:
         return None, None, None, None
 

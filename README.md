@@ -1,7 +1,11 @@
 # Fake Dataset Factory
 ### Synthetic Medical Chest X-Ray Generation — CSET419 GenAI Project
 
-> Generate labeled synthetic chest X-rays using 6 generative architectures spanning 2014–2022.  
+[![Kaggle](https://img.shields.io/badge/Kaggle-lakshyarathi-blue?logo=kaggle)](https://www.kaggle.com/lakshyarathi)
+[![Dataset](https://img.shields.io/badge/Dataset-lungpp-success?logo=kaggle)](https://www.kaggle.com/datasets/lakshyarathi/lungpp)
+[![HuggingFace](https://img.shields.io/badge/HuggingFace-Spaces-yellow?logo=huggingface)](https://huggingface.co/spaces)
+
+> Generate labeled synthetic chest X-rays using 6 generative architectures spanning 2014–2022.
 > Evaluate each model individually. Export a usable dataset. Compare them honestly.
 
 ---
@@ -108,7 +112,9 @@ model = xrv.models.DenseNet(weights="densenet121-res224-all")
 
 ## Dataset
 
-**paultimothymooney/chest-xray-pneumonia** (Kaggle, free)
+**Source:** [paultimothymooney/chest-xray-pneumonia](https://www.kaggle.com/datasets/paultimothymooney/chest-xray-pneumonia) (Kaggle, free)
+
+**Preprocessed:** [lakshyarathi/lungpp](https://www.kaggle.com/datasets/lakshyarathi/lungpp) (64×64 grayscale, ready to use)
 
 ```
 chest_xray/
@@ -119,6 +125,8 @@ chest_xray/
     NORMAL/       234 images   ← TSTR testing
     PNEUMONIA/    390 images
 ```
+
+Local path: `chest_xray/` or Kaggle: `/kaggle/input/chest-xray-pneumonia/chest_xray/`
 
 ---
 
@@ -133,17 +141,44 @@ fake-dataset-factory/
 │   ├── 04_vqvae.ipynb
 │   ├── 05_ddpm.ipynb
 │   ├── 06_flow_matching.ipynb
-│   └── 07_comparison.ipynb
+│   ├── 07_comparison.ipynb
+│   └── outputs/
+│       ├── 01_stable_diffusion/    ← images, labels.csv, metrics.json
+│       ├── 02_dcgan/
+│       ├── 03_wgan_gp/
+│       ├── 04_vqvae/
+│       ├── 05_ddpm/
+│       ├── 06_flow_matching/
+│       ├── combined_metrics.json   ← all models compared
+│       └── comparison_table.csv
+├── data/
+│   ├── prepare.ipynb
+│   ├── normal/                     ← preprocessed 64×64
+│   └── pneumonia/
 ├── src/
 │   ├── models/
 │   ├── evaluate.py
 │   ├── label.py
 │   └── export.py
-├── data/
-│   └── prepare.ipynb
-├── app.py
+├── app.py                          ← Gradio UI
 └── README.md
 ```
+
+---
+
+## Kaggle Notebooks
+
+All notebooks run on Kaggle T4 GPU (free tier). Training time per model: 10-30 min.
+
+| Notebook | Kaggle Link |
+|---|---|
+| 01_stable_diffusion | [Run on Kaggle](https://www.kaggle.com/code/lakshyarathi) |
+| 02_dcgan | [Run on Kaggle](https://www.kaggle.com/code/lakshyarathi) |
+| 03_wgan_gp | [Run on Kaggle](https://www.kaggle.com/code/lakshyarathi) |
+| 04_vqvae | [Run on Kaggle](https://www.kaggle.com/code/lakshyarathi) |
+| 05_ddpm | [Run on Kaggle](https://www.kaggle.com/code/lakshyarathi) |
+| 06_flow_matching | [Run on Kaggle](https://www.kaggle.com/code/lakshyarathi) |
+| 07_comparison | [Run on Kaggle](https://www.kaggle.com/code/lakshyarathi) |
 
 ---
 
@@ -177,5 +212,9 @@ Gradio app auto-detects which models are trained and enables them.
 - torchxrayvision: [mlmed/torchxrayvision](https://github.com/mlmed/torchxrayvision)
 
 ---
+
+## Author
+
+**Lakshya Rathi** — [Kaggle](https://www.kaggle.com/lakshyarathi)
 
 *CSET419 — Introduction to Generative AI*
