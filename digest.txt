@@ -47,7 +47,6 @@ Directory structure:
             │   ├── labels.csv
             │   └── metrics.json
             ├── 05_ddpm(old v)/
-            │   ├── 06_flow_matching_v2.textClipping
             │   ├── labels.csv
             │   └── metrics.json
             ├── 06_flow_matching/
@@ -54846,12 +54845,6 @@ FILE: notebooks/outputs/05_ddpm/metrics.json
   "final_loss": 0.019496977864187366,
   "seed": 42
 }
-
-
-================================================
-FILE: notebooks/outputs/05_ddpm(old v)/06_flow_matching_v2.textClipping
-================================================
-[Binary file]
 
 
 ================================================
