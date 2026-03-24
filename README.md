@@ -22,7 +22,7 @@ This tool generates synthetic labeled chest X-ray images using multiple generati
 ## Architecture
 
 ![Architecture](arch_new.svg)
-
+<!-- 
 ```
   Kaggle Chest X-Ray Dataset
   (train/NORMAL + train/PNEUMONIA)
@@ -57,7 +57,7 @@ This tool generates synthetic labeled chest X-ray images using multiple generati
            ▼
     Gradio UI → HuggingFace Spaces
     (auto-detects available models)
-```
+``` -->
 
 ---
 
