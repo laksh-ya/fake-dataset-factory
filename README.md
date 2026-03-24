@@ -69,8 +69,8 @@ This tool generates synthetic labeled chest X-ray images using multiple generati
 | DCGAN | 2014 | baseline GAN, BCE loss |
 | WGAN-GP | 2017 | stable GAN, Wasserstein + gradient penalty |
 | VQ-VAE | 2017 | discrete codebook, sharper than vanilla VAE |
-| DDPM | 2020 | diffusion model, **best quality** |
-| Flow Matching | 2022 | newest, straight-path transport |
+| DDPM | 2020 | diffusion model, strong quality |
+| Flow Matching v2 | 2022 | **best quality** — attention UNet + EMA + adaptive ODE |
 
 Each model trained on the same dataset. Same evaluation. Apples to apples (except SD — documented).
 
@@ -78,12 +78,12 @@ Each model trained on the same dataset. Same evaluation. Apples to apples (excep
 
 ## Results
 
-| Model | Year | FID ↓ | TSTR (Lung Opacity) ↑ | Notes |
+| Model | Year | FID ↓ | TSTR ↑ | Notes |
 |---|---|---|---|---|
-| **DDPM** | 2020 | **8.96** | 100% | 🥇 Best overall |
-| WGAN-GP | 2017 | 11.10 | 100% | 🥈 Stable training |
-| DCGAN | 2014 | 15.24 | 100% | 🥉 Strong baseline |
-| Flow Matching | 2022 | 40.35 | 100% | OT-CFM, 50 epochs |
+| **Flow Matching v2** | 2022 | **6.20** | 100% | 🥇 Best — attention + EMA + 100 epochs |
+| DDPM | 2020 | 8.96 | 100% | 🥈 Diffusion baseline |
+| WGAN-GP | 2017 | 11.10 | 100% | 🥉 Stable GAN training |
+| DCGAN | 2014 | 15.24 | 100% | Strong baseline |
 | VQ-VAE | 2017 | 46.59 | 100% | No PixelCNN prior* |
 | Stable Diffusion | 2022 | 94.71 | 100% | img2img mode** |
 
@@ -98,6 +98,10 @@ Each model trained on the same dataset. Same evaluation. Apples to apples (excep
 ### Generated Samples
 
 ![Samples Comparison](notebooks/outputs/samples_comparison.png)
+
+### Flow Matching v2 (Best Model)
+
+![Flow Matching v2 Samples](notebooks/outputs/06_flow_matching_v2/generated_samples.png)
 
 ---
 
@@ -146,6 +150,7 @@ fake-dataset-factory/
 │   ├── 04_vqvae.ipynb
 │   ├── 05_ddpm.ipynb
 │   ├── 06_flow_matching.ipynb
+│   ├── 06_flow_matching_v2.ipynb   ← improved version (best FID)
 │   ├── 07_comparison.ipynb
 │   └── outputs/
 │       ├── 01_stable_diffusion/    ← images, labels.csv, metrics.json
@@ -154,6 +159,7 @@ fake-dataset-factory/
 │       ├── 04_vqvae/
 │       ├── 05_ddpm/
 │       ├── 06_flow_matching/
+│       ├── 06_flow_matching_v2/    ← best results
 │       ├── combined_metrics.json   ← all models compared
 │       └── comparison_table.csv
 ├── data/
@@ -171,7 +177,7 @@ fake-dataset-factory/
 
 ---
 
-## Kaggle Notebooks
+<!-- ## Kaggle Notebooks
 
 All notebooks run on Kaggle T4 GPU (free tier). Training time per model: 10-30 min.
 
@@ -185,7 +191,7 @@ All notebooks run on Kaggle T4 GPU (free tier). Training time per model: 10-30 m
 | 06_flow_matching | [Run on Kaggle](https://www.kaggle.com/code/lakshyarathi) |
 | 07_comparison | [Run on Kaggle](https://www.kaggle.com/code/lakshyarathi) |
 
----
+--- -->
 
 ## Install
 
@@ -218,8 +224,3 @@ Gradio app auto-detects which models are trained and enables them.
 
 ---
 
-## Author
-
-**Lakshya Rathi** — [Kaggle](https://www.kaggle.com/lakshyarathi)
-
-*CSET419 — Introduction to Generative AI*

@@ -72,21 +72,29 @@
       "seed": 42
     },
     "Flow Matching": {
-      "model": "flow_matching",
+      "model": "flow_matching_v2",
       "n_generated": 100,
-      "fid_domain_adapted": 40.353098801156754,
+      "fid_domain_adapted": 6.204777845049774,
       "tstr_accuracy": 100.0,
-      "mean_pneumonia_score": 0.8909754753112793,
-      "epochs": 50,
+      "mean_pneumonia_score": 0.9191087484359741,
+      "epochs": 100,
       "batch_size": 32,
       "learning_rate": 0.0001,
-      "final_loss": 0.11754730651693895,
-      "seed": 42
+      "ema_decay": 0.999,
+      "final_loss": 0.10951865790796673,
+      "seed": 42,
+      "improvements": [
+        "attention layers at 16x16 and 8x8",
+        "EMA for stable generation",
+        "cosine LR schedule",
+        "100 epochs (2x v1)",
+        "adaptive ODE solver (dopri5)"
+      ]
     }
   },
   "best_fid": {
-    "model": "DDPM",
-    "score": 8.962898957707559
+    "model": "Flow Matching",
+    "score": 6.204777845049774
   },
   "best_tstr": {
     "model": "Stable Diffusion",

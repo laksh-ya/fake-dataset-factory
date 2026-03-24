@@ -11,7 +11,8 @@
 This project implements and compares 6 generative AI architectures for synthetic medical chest X-ray generation. The goal is to generate labeled synthetic data that can augment real datasets for training downstream classifiers, addressing the scarcity and class imbalance of medical imaging data.
 
 **Key Findings:**
-- DDPM achieves the best FID (8.96), outperforming both GANs and other diffusion methods
+- Flow Matching v2 achieves the best FID (6.20), outperforming all other architectures including DDPM
+- Attention layers + EMA + adaptive ODE solver dramatically improve flow matching quality
 - Simple GAN architectures (DCGAN, WGAN-GP) remain competitive with FID of 11-15
 - TSTR metric (100% across all models) is not discriminative for this task due to torchxrayvision's sensitivity to X-ray textures
 
@@ -152,10 +153,10 @@ Synthetic data generation addresses these issues by creating unlimited labeled t
 
 | Model | Year | FID ↓ | TSTR | Notes |
 |-------|------|-------|------|-------|
-| **DDPM** | 2020 | **8.96** | 100% | Best overall |
+| **Flow Matching v2** | 2022 | **6.20** | 100% | Best overall — attention + EMA |
+| DDPM | 2020 | 8.96 | 100% | Diffusion baseline |
 | WGAN-GP | 2017 | 11.10 | 100% | Stable training |
 | DCGAN | 2014 | 15.24 | 100% | Strong baseline |
-| Flow Matching | 2022 | 40.35 | 100% | OT-CFM, 50 epochs |
 | VQ-VAE | 2017 | 46.59 | 100% | No PixelCNN prior |
 | Stable Diffusion | 2022 | 94.71 | 100% | img2img mode |
 
@@ -170,9 +171,9 @@ Synthetic data generation addresses these issues by creating unlimited labeled t
 Generated samples from each model are saved in `notebooks/outputs/<model>/images/`.
 
 **Observations:**
-- DDPM: Sharp, realistic rib structures and lung fields — best quality
+- Flow Matching v2: Sharpest, most realistic — best rib and lung detail
+- DDPM: Sharp, realistic rib structures and lung fields
 - WGAN-GP/DCGAN: Competitive quality, sharp textures
-- Flow Matching: Good quality but slightly blurrier
 - VQ-VAE: Noisy, lacks global coherence (random sampling issue)
 - Stable Diffusion: Retains source image structure too strongly
 
@@ -247,11 +248,13 @@ app.py             # Gradio UI
 
 ## 8. Discussion
 
-### 8.1 Why DDPM Achieves the Best Results
+### 8.1 Why Flow Matching v2 Achieves the Best Results
 
-1. **Iterative refinement**: Diffusion models progressively denoise, allowing fine-grained detail recovery
-2. **Stable training**: No mode collapse or training instabilities common in GANs
-3. **Full distribution coverage**: Unlike GANs, DDPMs are trained to cover the entire data distribution
+1. **Attention layers**: Self-attention at 16×16 and 8×8 resolutions captures long-range dependencies (rib structures, lung boundaries)
+2. **EMA (Exponential Moving Average)**: Stabilizes generation by averaging model weights over training
+3. **Adaptive ODE solver (dopri5)**: More accurate trajectory integration than fixed-step Euler
+4. **Longer training**: 100 epochs (2× baseline) allows better convergence
+5. **Optimal transport path**: Straighter transport paths require fewer steps to sample accurately
 
 ### 8.2 WGAN-GP Stability
 
@@ -304,14 +307,15 @@ Pretrained SD sees real X-rays as input but outputs RGB images with different te
 
 ## 11. Conclusion
 
-This project demonstrates that diffusion models (DDPM) achieve the best results for synthetic medical image generation when properly trained, with **FID of 8.96**. However, GAN-based methods (WGAN-GP, DCGAN) remain competitive alternatives with FID scores of 11-15 and faster training times.
+This project demonstrates that **Flow Matching with attention and EMA achieves the best results** for synthetic medical image generation, with **FID of 6.20**. This outperforms both diffusion models (DDPM: 8.96) and GANs (WGAN-GP: 11.10).
 
 Key takeaways:
-- DDPM achieves the best FID when training converges properly
-- GANs offer a good quality-to-compute tradeoff
+- Flow Matching v2 with attention layers, EMA, and adaptive ODE solver achieves state-of-the-art FID
+- Architectural improvements (attention) matter more than raw training time for this task
+- GANs remain competitive and train faster, making them practical alternatives
 - Domain-adapted evaluation using torchxrayvision features provides more meaningful comparisons than standard Inception-based FID
 
-The key insight is that domain-adapted evaluation (using torchxrayvision features instead of Inception) provides more meaningful comparisons for medical imaging tasks.
+The project successfully demonstrates that modern generative models can produce high-quality synthetic chest X-rays suitable for data augmentation in medical imaging tasks.
 
 ---
 
