@@ -21,7 +21,7 @@ This tool generates synthetic labeled chest X-ray images using multiple generati
 
 ## Architecture
 
-![Architecture](arch.svg)
+![Architecture](arch_new.svg)
 
 ```
   Kaggle Chest X-Ray Dataset
