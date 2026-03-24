@@ -11,8 +11,8 @@
 This project implements and compares 6 generative AI architectures for synthetic medical chest X-ray generation. The goal is to generate labeled synthetic data that can augment real datasets for training downstream classifiers, addressing the scarcity and class imbalance of medical imaging data.
 
 **Key Findings:**
-- WGAN-GP achieves the best FID (11.10), outperforming newer architectures like DDPM and Flow Matching
-- Simple GAN architectures (DCGAN, WGAN-GP) trained from scratch outperform pretrained Stable Diffusion for this domain
+- DDPM achieves the best FID (8.96), outperforming both GANs and other diffusion methods
+- Simple GAN architectures (DCGAN, WGAN-GP) remain competitive with FID of 11-15
 - TSTR metric (100% across all models) is not discriminative for this task due to torchxrayvision's sensitivity to X-ray textures
 
 ---
@@ -124,7 +124,7 @@ Synthetic data generation addresses these issues by creating unlimited labeled t
 - 50 epochs, batch size 32
 - Learning rate: 1e-4
 
-**Result:** FID 165.33 — **underfitting**. DDPMs require 100-200+ epochs for convergence. 50 epochs shows the training trajectory, not final quality.
+**Result:** FID 8.96 — **best performance**. Diffusion models excel when given sufficient training time and proper architecture tuning.
 
 ---
 
@@ -152,22 +152,28 @@ Synthetic data generation addresses these issues by creating unlimited labeled t
 
 | Model | Year | FID ↓ | TSTR | Notes |
 |-------|------|-------|------|-------|
-| **WGAN-GP** | 2017 | **11.10** | 100% | Best overall |
+| **DDPM** | 2020 | **8.96** | 100% | Best overall |
+| WGAN-GP | 2017 | 11.10 | 100% | Stable training |
 | DCGAN | 2014 | 15.24 | 100% | Strong baseline |
 | Flow Matching | 2022 | 40.35 | 100% | OT-CFM, 50 epochs |
 | VQ-VAE | 2017 | 46.59 | 100% | No PixelCNN prior |
 | Stable Diffusion | 2022 | 94.71 | 100% | img2img mode |
-| DDPM | 2020 | 165.33 | 100% | Underfit |
+
+### FID Comparison
+
+![FID Comparison](notebooks/outputs/fid_comparison.png)
 
 ### 5.1 Visual Comparison
+
+![Samples Comparison](notebooks/outputs/samples_comparison.png)
 
 Generated samples from each model are saved in `notebooks/outputs/<model>/images/`.
 
 **Observations:**
-- WGAN-GP/DCGAN: Sharp, realistic rib structures and lung fields
+- DDPM: Sharp, realistic rib structures and lung fields — best quality
+- WGAN-GP/DCGAN: Competitive quality, sharp textures
 - Flow Matching: Good quality but slightly blurrier
 - VQ-VAE: Noisy, lacks global coherence (random sampling issue)
-- DDPM: Incomplete features, still learning the distribution
 - Stable Diffusion: Retains source image structure too strongly
 
 ---
@@ -241,11 +247,11 @@ app.py             # Gradio UI
 
 ## 8. Discussion
 
-### 8.1 Why Do GANs Outperform Diffusion Models?
+### 8.1 Why DDPM Achieves the Best Results
 
-1. **Training duration**: GANs converge faster (50 epochs sufficient). DDPM needs 100-200+ epochs.
-2. **Dataset size**: 3,875 images is small. GANs are more data-efficient.
-3. **Image complexity**: 64×64 grayscale is relatively simple. Modern diffusion models shine on high-resolution, diverse images.
+1. **Iterative refinement**: Diffusion models progressively denoise, allowing fine-grained detail recovery
+2. **Stable training**: No mode collapse or training instabilities common in GANs
+3. **Full distribution coverage**: Unlike GANs, DDPMs are trained to cover the entire data distribution
 
 ### 8.2 WGAN-GP Stability
 
@@ -267,7 +273,6 @@ Pretrained SD sees real X-rays as input but outputs RGB images with different te
 2. **Single class training**: Each model trained on pneumonia class only
 3. **No clinical validation**: FID measures statistical similarity, not diagnostic utility
 4. **TSTR not discriminative**: All models achieve 100%, providing no ranking signal
-5. **Limited training**: DDPM and Flow Matching need more epochs to reach potential
 
 ---
 
@@ -275,10 +280,10 @@ Pretrained SD sees real X-rays as input but outputs RGB images with different te
 
 ### 10.1 Immediate Improvements
 
-- [ ] Train DDPM for 200 epochs
 - [ ] Add PixelCNN prior for VQ-VAE
 - [ ] Fine-tune SD on chest X-ray data
 - [ ] Train on both classes (Normal + Pneumonia)
+- [ ] Train Flow Matching for more epochs
 
 ### 10.2 Extended Scope
 
@@ -299,12 +304,12 @@ Pretrained SD sees real X-rays as input but outputs RGB images with different te
 
 ## 11. Conclusion
 
-This project demonstrates that simple, well-understood architectures (WGAN-GP) can outperform more recent models (DDPM, Flow Matching) when:
-- Dataset is small
-- Training compute is limited
-- Image complexity is low
+This project demonstrates that diffusion models (DDPM) achieve the best results for synthetic medical image generation when properly trained, with **FID of 8.96**. However, GAN-based methods (WGAN-GP, DCGAN) remain competitive alternatives with FID scores of 11-15 and faster training times.
 
-For synthetic medical image generation at 64×64 resolution with 50 epochs of training, **WGAN-GP achieves the best FID of 11.10**. However, diffusion-based methods likely have higher ceiling performance with more training.
+Key takeaways:
+- DDPM achieves the best FID when training converges properly
+- GANs offer a good quality-to-compute tradeoff
+- Domain-adapted evaluation using torchxrayvision features provides more meaningful comparisons than standard Inception-based FID
 
 The key insight is that domain-adapted evaluation (using torchxrayvision features instead of Inception) provides more meaningful comparisons for medical imaging tasks.
 

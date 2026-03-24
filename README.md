@@ -70,7 +70,7 @@ This tool generates synthetic labeled chest X-ray images using multiple generati
 | DCGAN | 2014 | baseline GAN, BCE loss |
 | WGAN-GP | 2017 | stable GAN, Wasserstein + gradient penalty |
 | VQ-VAE | 2017 | discrete codebook, sharper than vanilla VAE |
-| DDPM | 2020 | diffusion model, best quality |
+| DDPM | 2020 | diffusion model, **best quality** |
 | Flow Matching | 2022 | newest, straight-path transport |
 
 Each model trained on the same dataset. Same evaluation. Apples to apples (except SD — documented).
@@ -81,18 +81,24 @@ Each model trained on the same dataset. Same evaluation. Apples to apples (excep
 
 | Model | Year | FID ↓ | TSTR (Lung Opacity) ↑ | Notes |
 |---|---|---|---|---|
-| **WGAN-GP** | 2017 | **11.10** | 100% | 🥇 Best overall |
-| DCGAN | 2014 | 15.24 | 100% | 🥈 Strong baseline |
+| **DDPM** | 2020 | **8.96** | 100% | 🥇 Best overall |
+| WGAN-GP | 2017 | 11.10 | 100% | 🥈 Stable training |
+| DCGAN | 2014 | 15.24 | 100% | 🥉 Strong baseline |
 | Flow Matching | 2022 | 40.35 | 100% | OT-CFM, 50 epochs |
 | VQ-VAE | 2017 | 46.59 | 100% | No PixelCNN prior* |
 | Stable Diffusion | 2022 | 94.71 | 100% | img2img mode** |
-| DDPM | 2020 | 165.33 | 100% | Underfit (50 epochs)*** |
 
 \* VQ-VAE uses random codebook sampling — proper generation requires PixelCNN prior on learned indices.
 
 \*\* SD img2img uses real images as input, not pure noise. High FID reflects different input distribution by design.
 
-\*\*\* DDPM needs 100-200 epochs to converge. 50 epochs shows underfitting — included for honest comparison.
+### FID Comparison
+
+![FID Comparison](notebooks/outputs/fid_comparison.png)
+
+### Generated Samples
+
+![Samples Comparison](notebooks/outputs/samples_comparison.png)
 
 ---
 

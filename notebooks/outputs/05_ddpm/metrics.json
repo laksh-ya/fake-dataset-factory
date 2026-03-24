@@ -1,13 +1,13 @@
 {
   "model": "ddpm",
   "n_generated": 100,
-  "fid_domain_adapted": 165.33400899856554,
+  "fid_domain_adapted": 8.962898957707559,
   "tstr_accuracy": 100.0,
-  "mean_pneumonia_score": 0.8015575408935547,
+  "mean_pneumonia_score": 0.9040848612785339,
   "epochs": 50,
   "batch_size": 32,
   "num_timesteps": 1000,
   "learning_rate": 0.0001,
-  "final_loss": 0.019496975905331206,
+  "final_loss": 0.019496977864187366,
   "seed": 42
 }
