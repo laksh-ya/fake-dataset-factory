@@ -1,0 +1,18 @@
+{
+  "model": "vqvae",
+  "n_generated": 100,
+  "fid_domain_adapted": 46.586989168788534,
+  "tstr_accuracy": 100.0,
+  "mean_pneumonia_score": 0.9408174753189087,
+  "epochs": 50,
+  "batch_size": 32,
+  "hidden_dim": 128,
+  "embed_dim": 64,
+  "num_embeddings": 512,
+  "beta": 0.25,
+  "learning_rate": 0.001,
+  "final_loss": 0.0021171183748678727,
+  "final_recon_loss": 0.0010161337583164168,
+  "seed": 42,
+  "note": "Random codebook sampling without PixelCNN prior"
+}

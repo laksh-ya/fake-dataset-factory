@@ -1,0 +1,12 @@
+{
+  "model": "flow_matching",
+  "n_generated": 100,
+  "fid_domain_adapted": 40.353098801156754,
+  "tstr_accuracy": 100.0,
+  "mean_pneumonia_score": 0.8909754753112793,
+  "epochs": 50,
+  "batch_size": 32,
+  "learning_rate": 0.0001,
+  "final_loss": 0.11754730651693895,
+  "seed": 42
+}

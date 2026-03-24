@@ -1,0 +1,16 @@
+{
+  "model": "wgan_gp",
+  "n_generated": 100,
+  "fid_domain_adapted": 11.098164794686305,
+  "tstr_accuracy": 100.0,
+  "mean_pneumonia_score": 0.9410611987113953,
+  "epochs": 50,
+  "batch_size": 32,
+  "noise_dim": 100,
+  "learning_rate": 0.0001,
+  "lambda_gp": 10,
+  "critic_iterations": 5,
+  "final_G_loss": -2.7212891172279012,
+  "final_C_loss": -3.688484305783737,
+  "seed": 42
+}
