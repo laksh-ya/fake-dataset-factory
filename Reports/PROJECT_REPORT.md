@@ -210,11 +210,11 @@ fake-dataset-factory/
 
 ### 6.2 FID Comparison
 
-![FID Comparison](notebooks/outputs/fid_comparison.png)
+![FID Comparison](../notebooks/outputs/fid_comparison.png)
 
 ### 6.3 Visual Comparison
 
-![Samples Comparison](notebooks/outputs/samples_comparison.png)
+![Samples Comparison](../notebooks/outputs/samples_comparison.png)
 
 ### 6.4 Analysis
 
